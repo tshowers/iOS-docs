@@ -7,6 +7,10 @@ configs:
 settings:
   base:
     PRODUCT_BUNDLE_IDENTIFIER: tech.taliferro.docsios
+    # Real device builds need a real team for the Associated Domains
+    # capability (Universal Links) to actually provision - matches
+    # taliferro-music-native's team.
+    DEVELOPMENT_TEAM: "6377FLHLAG"
     IPHONEOS_DEPLOYMENT_TARGET: 17.0
     SWIFT_VERSION: 5.0
 packages:
@@ -40,6 +44,17 @@ targets:
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
+        # Required for App Store validation: TARGETED_DEVICE_FAMILY is 1,2,
+        # and iPad multitasking needs all four orientations declared.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         DOCS_API_BASE_URL: $(DOCS_API_BASE_URL)
         DOCS_APP_STORE_PRODUCT_ID: $(DOCS_APP_STORE_PRODUCT_ID)
         # Native Google Sign-In's redirect callback scheme - the
@@ -54,6 +69,10 @@ targets:
       properties:
         com.apple.developer.applesignin:
           - Default
+        # Universal Links: see network-ios's project.yml for the full
+        # explanation - same mechanism, this app's own domain.
+        com.apple.developer.associated-domains:
+          - applinks:docs.taliferro.tech
     dependencies:
       - package: FirebaseiOS
         product: FirebaseAuth

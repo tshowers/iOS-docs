@@ -40,7 +40,10 @@ struct RepositoryView: View {
                             ForEach(Array(viewModel.filteredEntries.enumerated()), id: \.element.id) { index, entry in
                                 ScrollView {
                                     entryCard(entry)
-                                        .padding(16)
+                                        .frame(maxWidth: 760)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.horizontal, 40)
+                                        .padding(.vertical, 16)
                                 }
                                 .refreshable { await viewModel.load() }
                                 .tag(index)

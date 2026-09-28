@@ -14,6 +14,7 @@ struct DocumentListView: View {
     @State private var isShowingStatus = false
     @State private var isShowingRepository = false
     @State private var isShowingLogoutConfirmation = false
+    @State private var isShowingCreateWarning = false
     @State private var pendingDelete: TeamDocument?
     @State private var isOpeningWebHandoff = false
     @State private var webHandoffErrorMessage: String?
@@ -83,6 +84,14 @@ struct DocumentListView: View {
             }
         } message: {
             Text(pendingDelete.map(documentTitle) ?? "")
+        }
+        .alert("You'll leave Docs", isPresented: $isShowingCreateWarning) {
+            Button("Cancel", role: .cancel) { }
+            Button("Continue") {
+                openWebHandoff(path: "/docs/upload", host: Self.docsHost)
+            }
+        } message: {
+            Text("Uploading a new document opens docs.taliferro.tech in your browser, already signed in. You'll leave the app to do this.")
         }
         .alert("Couldn't open that page", isPresented: .constant(webHandoffErrorMessage != nil)) {
             Button("OK") { webHandoffErrorMessage = nil }
@@ -180,6 +189,9 @@ struct DocumentListView: View {
                     Label("No documents yet", systemImage: "doc.text")
                 } description: {
                     Text("Your documents will appear here.")
+                } actions: {
+                    Button("Upload a Document") { isShowingCreateWarning = true }
+                        .buttonStyle(.borderedProminent)
                 }
             } else if filteredDocuments.isEmpty {
                 ContentUnavailableView("No documents found", systemImage: "magnifyingglass", description: Text("Try a different search."))
@@ -233,6 +245,14 @@ struct DocumentListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 accountMenu
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isShowingCreateWarning = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .disabled(isOpeningWebHandoff)
             }
         }
     }
