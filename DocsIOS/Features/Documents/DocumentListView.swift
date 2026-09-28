@@ -38,8 +38,9 @@ struct DocumentListView: View {
         (title: "My Documents", icon: "folder", path: "/docs/documents", host: docsHost),
         (title: "Upload", icon: "arrow.up.doc", path: "/docs/upload", host: docsHost),
         (title: "Studio", icon: "pencil.and.outline", path: "/docs/editor", host: docsHost),
-        (title: "Knowledge Base", icon: "book", path: "/knowledge", host: docsHost),
-        (title: "Response Flow", icon: "arrow.triangle.branch", path: "/knowledge/response-flow", host: docsHost),
+        // "Knowledge Base" is in-app (RepositoryView); the web builder is
+        // where new Q&A answers are written.
+        (title: "New Q&A Answer", icon: "text.bubble", path: "/knowledge/response-flow", host: docsHost),
     ]
 
     init(apiClient: DocsAPIClient, authService: AuthService, awardsService: AwardsService) {
@@ -336,15 +337,13 @@ struct DocumentListView: View {
 
     private var accountMenu: some View {
         Menu {
-            ForEach(Self.webHandoffMenuItems, id: \.title) { item in
-                Button {
-                    openWebHandoff(path: item.path, host: item.host)
-                } label: {
-                    Label(item.title, systemImage: item.icon)
-                }
-                .disabled(isOpeningWebHandoff)
+            // In-app pages first; web pages grouped under their own header
+            // so it's clear which ones leave the app.
+            Button {
+                isShowingRepository = true
+            } label: {
+                Label("Knowledge Base", systemImage: "book.closed")
             }
-            Divider()
             Button {
                 openAccount(.gettingStarted)
             } label: {
@@ -365,15 +364,22 @@ struct DocumentListView: View {
             } label: {
                 Label("Status", systemImage: "gauge.medium")
             }
-            Button {
-                isShowingRepository = true
-            } label: {
-                Label("My Knowledge Base", systemImage: "book.closed")
+            Section("Opens docs.taliferro.tech") {
+                ForEach(Self.webHandoffMenuItems, id: \.title) { item in
+                    Button {
+                        openWebHandoff(path: item.path, host: item.host)
+                    } label: {
+                        Label(item.title, systemImage: item.icon)
+                    }
+                    .disabled(isOpeningWebHandoff)
+                }
             }
-            Button(role: .destructive) {
-                isShowingLogoutConfirmation = true
-            } label: {
-                Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+            Section {
+                Button(role: .destructive) {
+                    isShowingLogoutConfirmation = true
+                } label: {
+                    Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                }
             }
         } label: {
             Label("Account", systemImage: "person.crop.circle")
