@@ -2,10 +2,14 @@ import SwiftUI
 import AVFoundation
 import UIKit
 import TODDAuthKit
+import TODDAwardsKit
+import TODDProfileKit
 
 struct DocumentListView: View {
     @ObservedObject var authService: AuthService
+    @ObservedObject var awardsService: AwardsService
     @StateObject private var viewModel: DocumentListViewModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private let apiClient: DocsAPIClient
     @State private var searchTerm = ""
     @State private var sortNewestFirst = true
@@ -13,6 +17,11 @@ struct DocumentListView: View {
     @State private var editingDocument: TeamDocument?
     @State private var isShowingStatus = false
     @State private var isShowingRepository = false
+    /// Getting Started / Profile / Awards - see AccountView.
+    @State private var isShowingAccount = false
+    @State private var accountStart: AccountPage?
+    /// The answer built in the pre-sign-in wizard, waiting for Save.
+    @State private var isShowingFirstAnswer = false
     @State private var isShowingLogoutConfirmation = false
     @State private var isShowingCreateWarning = false
     @State private var pendingDelete: TeamDocument?
@@ -33,9 +42,10 @@ struct DocumentListView: View {
         (title: "Response Flow", icon: "arrow.triangle.branch", path: "/knowledge/response-flow", host: docsHost),
     ]
 
-    init(apiClient: DocsAPIClient, authService: AuthService) {
+    init(apiClient: DocsAPIClient, authService: AuthService, awardsService: AwardsService) {
         self.apiClient = apiClient
         self.authService = authService
+        self.awardsService = awardsService
         _viewModel = StateObject(wrappedValue: DocumentListViewModel(apiClient: apiClient))
     }
 
@@ -46,7 +56,24 @@ struct DocumentListView: View {
             detailPane
         }
         .refreshable { await viewModel.load() }
-        .task { await viewModel.load() }
+        .task {
+            await viewModel.load()
+            await checkAwards()
+            // Came through the wizard: review and save that answer first;
+            // Getting Started follows once it's closed.
+            if FirstAnswerDraft.load().isPendingSave {
+                isShowingFirstAnswer = true
+                return
+            }
+            // Open the checklist once per launch while steps remain,
+            // unless the user switched it off there.
+            if await GettingStartedStartup.shouldAutoShow(
+                api: AccountView.gettingStartedAPI(authService: authService),
+                showAtStartupKey: AccountView.showAtStartupKey
+            ) {
+                openAccount(.gettingStarted)
+            }
+        }
         .onChange(of: viewModel.documents.count) { _, _ in
             if let selectedDocumentID, !viewModel.documents.contains(where: { $0.id == selectedDocumentID }) {
                 self.selectedDocumentID = nil
@@ -55,6 +82,27 @@ struct DocumentListView: View {
         .sheet(item: $editingDocument) { document in
             DocumentEditorView(apiClient: apiClient, document: document) { updated in
                 viewModel.upsert(updated)
+                awardsService.recordDocumentSaved()
+            }
+        }
+        .fullScreenCover(isPresented: $isShowingAccount, onDismiss: {
+            // Profile/Knowledge Base steps get done from here - the likeliest
+            // moment for new awards.
+            Task { await checkAwards() }
+        }) {
+            AccountView(start: accountStart, authService: authService, awardsService: awardsService) { path, host in
+                openWebHandoff(path: path, host: host)
+            }
+        }
+        .fullScreenCover(isPresented: $isShowingFirstAnswer) {
+            FirstAnswerSaveView(apiClient: apiClient) { saved in
+                isShowingFirstAnswer = false
+                if saved { awardsService.recordFirstAnswerWritten() }
+                // Next: the checklist (the answer step is now ticked).
+                Task {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    openAccount(.gettingStarted)
+                }
             }
         }
         .fullScreenCover(isPresented: $isShowingStatus) {
@@ -219,6 +267,35 @@ struct DocumentListView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Documents")
+        .toolbar {
+            // On iPhone the split view shows the library alone, so the
+            // detail pane's menu isn't on screen - put it here too.
+            if horizontalSizeClass == .compact {
+                ToolbarItem(placement: .topBarTrailing) {
+                    accountMenu
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingCreateWarning = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .disabled(isOpeningWebHandoff)
+                    .accessibilityLabel("Upload a document")
+                }
+            }
+        }
+    }
+
+    private func openAccount(_ page: AccountPage?) {
+        accountStart = page
+        isShowingAccount = true
+    }
+
+    private func checkAwards() async {
+        if let progress = try? await apiClient.fetchProgress() {
+            awardsService.recordProgress(progress)
+        }
     }
 
     /// The account menu lives on the detail pane's toolbar, not the
@@ -268,6 +345,21 @@ struct DocumentListView: View {
                 .disabled(isOpeningWebHandoff)
             }
             Divider()
+            Button {
+                openAccount(.gettingStarted)
+            } label: {
+                Label("Getting Started", systemImage: "checklist")
+            }
+            Button {
+                openAccount(.profile)
+            } label: {
+                Label("Profile", systemImage: "person.crop.circle")
+            }
+            Button {
+                openAccount(.awards)
+            } label: {
+                Label("Awards", systemImage: "rosette")
+            }
             Button {
                 isShowingStatus = true
             } label: {

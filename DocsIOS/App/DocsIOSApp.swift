@@ -2,11 +2,13 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseCore
 import TODDAuthKit
+import TODDAwardsKit
 
 @main
 struct DocsIOSApp: App {
     @StateObject private var authService: AuthService
     @StateObject private var entitlementService: EntitlementService
+    @StateObject private var awardsService: AwardsService
     private let apiClient: DocsAPIClient
 
     init() {
@@ -19,6 +21,7 @@ struct DocsIOSApp: App {
         let config = AppConfig.fromBundle()
         let authService = AuthService()
         _authService = StateObject(wrappedValue: authService)
+        _awardsService = StateObject(wrappedValue: DocsAwards.makeService(authService: authService))
         let apiClient = DocsAPIClient(config: config, authService: authService)
         self.apiClient = apiClient
         _entitlementService = StateObject(wrappedValue: EntitlementService(
@@ -30,7 +33,7 @@ struct DocsIOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(authService: authService, entitlementService: entitlementService, apiClient: apiClient)
+            RootView(authService: authService, entitlementService: entitlementService, apiClient: apiClient, awardsService: awardsService)
                 .onOpenURL { url in
                     _ = GoogleSignInHelper.handle(url)
                 }

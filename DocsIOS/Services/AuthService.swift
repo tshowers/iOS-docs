@@ -2,6 +2,7 @@ import Foundation
 import FirebaseAuth
 import FirebaseFirestore
 import TODDAuthKit
+import TODDProfileKit
 
 /// Mirrors `frontend/src/app/services/auth.service.ts`'s `resolveAssignedTenantId`
 /// - Docs are shared, tenant-scoped team documents, so this follows
@@ -24,6 +25,10 @@ final class AuthService: ObservableObject {
             self.isLoading = false
             self.sessionGate.handleAuthStateChange(hasUser: user != nil)
             Task { await self.refreshTenantId() }
+            // Retries a wizard save that failed on a previous launch.
+            if user != nil {
+                Task { await self.submitOnboardingIfNeeded() }
+            }
         }
     }
 
@@ -68,6 +73,24 @@ final class AuthService: ObservableObject {
 
         let decoded = try JSONDecoder().decode(BootstrapResponse.self, from: data)
         tenantId = decoded.tenantId
+        await submitOnboardingIfNeeded()
+    }
+
+    /// Where the pre-sign-in wizard keeps name/company until sign-in.
+    static let profileStore = OnboardingProfileStore(storageKey: "docs.onboardingProfile", source: "docs-ios")
+
+    /// Saves the wizard's name/company to the TODD profile (blank fields
+    /// only). Best-effort; retries next launch if it fails. The Q&A answer
+    /// isn't saved here - the user reviews it and taps Save
+    /// (FirstAnswerSaveView), same as Pulse's pending survey.
+    func submitOnboardingIfNeeded() async {
+        guard currentUser != nil else { return }
+        let baseURL = AppConfig.fromBundle().apiBaseURL
+        let idToken: @Sendable () async throws -> String = { [weak self] in
+            guard let self else { throw AuthServiceError.notSignedIn }
+            return try await self.freshIdToken()
+        }
+        await Self.profileStore.submitIfReady(baseURL: baseURL, idToken: idToken)
     }
 
     private func refreshTenantId() async {

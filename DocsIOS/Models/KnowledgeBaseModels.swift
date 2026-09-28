@@ -9,6 +9,22 @@ struct KnowledgeBaseAnswer: Codable, Identifiable {
     var id: String { source + answer }
     let answer: String
     let source: String
+
+    init(answer: String, source: String) {
+        self.answer = answer
+        self.source = source
+    }
+}
+
+/// Body for `POST /mobile/docs/knowledge-base` (kb.service.js
+/// buildCreatePayload) - the same response-flow shape the web builder saves.
+struct KnowledgeBaseCreatePayload: Encodable {
+    let title: String
+    let question: String
+    let response: String
+    let answers: [KnowledgeBaseAnswer]
+    let category: String
+    let keywords: [String]
 }
 
 struct KnowledgeBaseRecommendation: Codable, Identifiable {
