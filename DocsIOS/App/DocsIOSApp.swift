@@ -33,10 +33,14 @@ struct DocsIOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(authService: authService, entitlementService: entitlementService, apiClient: apiClient, awardsService: awardsService)
-                .onOpenURL { url in
-                    _ = GoogleSignInHelper.handle(url)
-                }
+            if PaywallScreenshot.current != nil {
+                PaywallView(entitlementService: entitlementService, onSignOut: {})
+            } else {
+                RootView(authService: authService, entitlementService: entitlementService, apiClient: apiClient, awardsService: awardsService)
+                    .onOpenURL { url in
+                        _ = GoogleSignInHelper.handle(url)
+                    }
+            }
         }
     }
 }

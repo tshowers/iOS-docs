@@ -59,6 +59,7 @@ final class EntitlementService: ObservableObject {
     }
 
     func loadProducts() async {
+        if PaywallScreenshot.current != nil { return }
         guard !configuredProductIds.isEmpty else {
             errorMessage = "Docs' App Store subscription isn't configured yet."
             return
