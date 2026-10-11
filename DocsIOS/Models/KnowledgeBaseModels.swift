@@ -9,6 +9,22 @@ struct KnowledgeBaseAnswer: Codable, Identifiable {
     var id: String { source + answer }
     let answer: String
     let source: String
+
+    init(answer: String, source: String) {
+        self.answer = answer
+        self.source = source
+    }
+}
+
+/// Body for `POST /mobile/docs/knowledge-base` (kb.service.js
+/// buildCreatePayload) - the same response-flow shape the web builder saves.
+struct KnowledgeBaseCreatePayload: Encodable {
+    let title: String
+    let question: String
+    let response: String
+    let answers: [KnowledgeBaseAnswer]
+    let category: String
+    let keywords: [String]
 }
 
 struct KnowledgeBaseRecommendation: Codable, Identifiable {
@@ -32,6 +48,11 @@ struct KnowledgeBaseEntry: Codable, Identifiable {
     let resources: [KnowledgeBaseResource]
     let keywords: [String]?
     let updatedAt: String?
+    /// "find" for answers saved with Find's Save to Knowledge.
+    let createdBy: String?
+    /// Saved from Find by a workspace without Docs: viewable, not deletable
+    /// (the server refuses with KB_READ_ONLY).
+    let readOnly: Bool
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -43,6 +64,8 @@ struct KnowledgeBaseEntry: Codable, Identifiable {
         resources = try container.decodeIfPresent([KnowledgeBaseResource].self, forKey: .resources) ?? []
         keywords = try container.decodeIfPresent([String].self, forKey: .keywords)
         updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
+        createdBy = try container.decodeIfPresent(String.self, forKey: .createdBy)
+        readOnly = try container.decodeIfPresent(Bool.self, forKey: .readOnly) ?? false
     }
 }
 
