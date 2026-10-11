@@ -14,7 +14,7 @@ enum PaywallScreenshot {
     static var current: Preview? {
         #if DEBUG
         guard ProcessInfo.processInfo.arguments.contains("-paywallScreenshot") else { return nil }
-        return Preview(name: "TODD Docs", price: "$12.99")
+        return Preview(name: "TODD Docs", price: "$19.99")
         #else
         return nil
         #endif
