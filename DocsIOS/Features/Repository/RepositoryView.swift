@@ -40,7 +40,10 @@ struct RepositoryView: View {
                             ForEach(Array(viewModel.filteredEntries.enumerated()), id: \.element.id) { index, entry in
                                 ScrollView {
                                     entryCard(entry)
-                                        .padding(16)
+                                        .frame(maxWidth: 760)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.horizontal, 40)
+                                        .padding(.vertical, 16)
                                 }
                                 .refreshable { await viewModel.load() }
                                 .tag(index)
@@ -164,6 +167,11 @@ struct RepositoryView: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.blue)
                 }
+                if entry.createdBy == "find" {
+                    Text("VIA FIND")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 if let reviewed = formattedDate(entry.updatedAt) {
                     Text("Reviewed \(reviewed)")
@@ -177,10 +185,15 @@ struct RepositoryView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(.separator, lineWidth: 1))
         .contextMenu {
-            Button(role: .destructive) {
-                pendingDelete = entry
-            } label: {
-                Label("Delete", systemImage: "trash")
+            if entry.readOnly {
+                // Saved from Find without Docs: readable, not deletable.
+                Text("Saved from Find. Get Docs to delete it.")
+            } else {
+                Button(role: .destructive) {
+                    pendingDelete = entry
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
             }
         }
     }

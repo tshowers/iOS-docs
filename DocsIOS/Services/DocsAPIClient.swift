@@ -63,15 +63,37 @@ final class DocsAPIClient {
         return try decoder.decode(KnowledgeBaseListEnvelope.self, from: data).items
     }
 
+    func createKnowledgeBaseEntry(_ payload: KnowledgeBaseCreatePayload) async throws {
+        let url = config.apiBaseURL.appending(path: "mobile/docs/knowledge-base")
+        _ = try await authorizedRequest(method: "POST", url: url, body: try encoder.encode(payload))
+    }
+
     func deleteKnowledgeBaseEntry(id: String) async throws {
         let url = config.apiBaseURL.appending(path: "mobile/docs/knowledge-base/\(id)")
         _ = try await authorizedRequest(method: "DELETE", url: url)
+    }
+
+    func fetchProgress() async throws -> DocsProgress {
+        let url = config.apiBaseURL.appending(path: "getting-started/docs")
+        let data = try await authorizedRequest(method: "GET", url: url)
+        return try decoder.decode(DocsProgressEnvelope.self, from: data).data
     }
 
     func linkAppStorePurchase(appAccountToken: String) async throws {
         let payload = AppStoreLinkRequest(appAccountToken: appAccountToken, productKey: "docs")
         let url = config.apiBaseURL.appending(path: "app-store/link")
         _ = try await authorizedRequest(method: "POST", url: url, body: try encoder.encode(payload))
+    }
+
+    /// Sends a StoreKit transaction's signed JWS right after a purchase or
+    /// restore; the backend verifies Apple's signature and returns the fresh
+    /// entitlement - an immediate unlock that doesn't depend on Apple's
+    /// server notification arriving (TestFlight renews about daily).
+    func submitAppStoreTransaction(signedTransaction: String) async throws -> AppStoreEntitlement {
+        let url = config.apiBaseURL.appending(path: "app-store/transactions/docs")
+        let body = try encoder.encode(AppStoreTransactionRequest(signedTransaction: signedTransaction))
+        let data = try await authorizedRequest(method: "POST", url: url, body: body)
+        return try decoder.decode(AppStoreEntitlementEnvelope.self, from: data).entitlement
     }
 
     func fetchAppStoreEntitlement() async throws -> AppStoreEntitlement {
